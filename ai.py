@@ -1,6 +1,4 @@
-import os
 import click
-import requests
 
 from bedrock.bedrock import get_summary
 from utils.helpers import *
