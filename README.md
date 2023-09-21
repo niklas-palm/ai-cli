@@ -1,6 +1,6 @@
 ## ai cli
 
-Simple cli to summarise websites and PDFs with Amazon Bedrock.
+Simple cli to summarise text with Bedrock. Contains some convenvience commands to feth and send data from URLs and PDFs to stdout
 
 ### Prerequisites
 
@@ -26,7 +26,7 @@ pip install --editable .
 
 The editable flag means we can edit the code without having to reinstall the CLI.
 
-4. Test it out.
+### Examples
 
 ```bash
 ai fetch https://en.wikipedia.org/wiki/London_System | ai summarise
