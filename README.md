@@ -35,3 +35,7 @@ ai fetch https://en.wikipedia.org/wiki/London_System | ai summarise
 ```bash
 ai fetch benefit_agreements.pdf | ai summarise
 ```
+
+### Throttling
+
+At the time of writing, Bedrock has 3 RPM limit by default. If you're facing severe issues with that, use [this sim](https://sim.amazon.com/issues/V1042706657) to requeset a limit increase. Internal accounts can get up to 60 RPM at the time of writing.
