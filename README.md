@@ -11,14 +11,14 @@ Simple cli to summarise text with Bedrock. Contains some convenvience commands t
 
 1. Initialise venv and activate environment
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+    
 1. Ensure you have PYTHONPATH set in your environment
 
-`export PYTHONPATH="${PYTHONPATH}:${PWD}"`
-
+    `export PYTHONPATH="${PYTHONPATH}:${PWD}"`
 
 1. Update `setup.py` script to reference your local `boto3` and `botocore` .whl
 
