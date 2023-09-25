@@ -24,11 +24,11 @@ Simple cli to summarise text with Bedrock. Contains some convenvience commands t
 
 1. Install cli
 
-```bash
-pip install --editable .
-```
-
-The editable flag means we can edit the code without having to reinstall the CLI.
+    ```bash
+    pip install --editable .
+    ```
+    
+    The editable flag means we can edit the code without having to reinstall the CLI.
 
 ### Examples
 
