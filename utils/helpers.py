@@ -1,95 +1,81 @@
 import os
-import click
 import requests
 from urllib.parse import urlparse
 from PyPDF2 import PdfReader
 from bs4 import BeautifulSoup
 
 
-def is_local_filepath(input: str) -> bool:
-    """Chek if input is a local filepath
+def is_local_filepath(file_path: str) -> bool:
+    """
+    Check if the given input is a local file path.
 
     Parameters:
-        input (str): input to check
+        file_path (str): The input file path to check.
 
     Returns:
-        True | False
+        bool: True if the input is a local file path, False otherwise.
     """
-    if os.path.exists(input):
-        return True  # It's a local file path
-
-    return False
+    return os.path.exists(file_path)
 
 
 def is_url(input: str) -> bool:
-    """Chek if input is a url
+    """
+    Check if the given input is a URL.
 
     Parameters:
-        input (str): input to check
+        input (str): The input URL to check.
 
     Returns:
-        True | False
+        bool: True if the input is a URL, False otherwise.
     """
-    # Parse the input argument as a URL
     parsed_url = urlparse(input)
-
-    if parsed_url.scheme and parsed_url.scheme.startswith("http"):
-        return True
-
-    return False
+    return bool(parsed_url.scheme and parsed_url.scheme.startswith("http"))
 
 
 def fetch_pdf(path: str) -> str:
-    """Reads the provided PDF and return the text
+    """
+    Read the provided PDF and return the text.
 
     Parameters:
-        path (str): path of pdf
+        path (str): The path of the PDF.
 
     Returns:
-        pdf_text (str)
+        str: The extracted text from the PDF.
+
+    Raises:
+        FileNotFoundError: If the file path does not exist.
+        ValueError: If the file is not a PDF.
     """
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"No file found at {path}")
 
-    def is_pdf_file(path):
-        # Check if the file path exists
-        if not os.path.exists(path):
-            return False
+    file_extension = os.path.splitext(path)[1]
+    if file_extension.lower() != ".pdf":
+        raise ValueError("File is not a PDF")
 
-        # Get the file extension and check if it's '.pdf'
-        file_extension = os.path.splitext(path)[1]
-        return file_extension.lower() == ".pdf"
-
-    if not is_pdf_file(path):
-        raise Exception("Not a PDF file. What are you tying to do!?")
-
-    # Read PDF
     reader = PdfReader(path)
-
-    # Extract all text from reader object
-    pdf_text = "\n".join([x.extract_text() for x in reader.pages])
-
-    return pdf_text
+    return "\n".join(page.extract_text() for page in reader.pages)
 
 
 def fetch_url(url: str) -> str:
-    """Fecthes the provided url, parses the HTML and returns the text
+    """
+    Fetch the provided URL, parse the HTML, and return the text.
 
     Parameters:
-        url (str): URL to fetch
+        url (str): The URL to fetch.
 
     Returns:
-        pdf_text (str)
+        str: The text content of the URL.
+
+    Raises:
+        requests.exceptions.RequestException: If there is a problem with the
+        request.
     """
-    try:
-        # Send an HTTP GET request to the specified URL
-        response = requests.get(url)
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise requests.exceptions.RequestException(
+            f"Request to {url} returned status code {response.status_code}")
 
-        # Check if the request was successful (status code 200)
-        if response.status_code == 200:
-            # Print the content of the website
-            soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(response.text, "html.parser")
+    return soup.get_text()
 
-            # Extract and print the text content (excluding HTML tags)
-            text_content = soup.get_text()
-            click.echo(text_content)
-    except requests.exceptions.RequestException as e:
-        raise e
