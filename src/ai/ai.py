@@ -1,7 +1,7 @@
 import click
 
-from bedrock.bedrock import get_summary
-from utils.helpers import *
+from ai.bedrock.bedrock import get_summary
+from ai.utils.helpers import *
 
 
 class Config(object):

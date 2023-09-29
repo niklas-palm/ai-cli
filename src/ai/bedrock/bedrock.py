@@ -1,4 +1,3 @@
-import bedrock
 import time
 import json
 import boto3
@@ -8,13 +7,12 @@ import nltk
 import time
 
 # What model of Amazon Bedrock to use
-MODEL_ID = "amazon.titan-tg1-large"
+MODEL_ID = "anthropic.claude-instant-v1"
 
 
 bedrock = boto3.client(
-    service_name="bedrock",
-    region_name="us-west-2",
-    endpoint_url="https://prod.us-west-2.frontend.bedrock.aws.dev",
+    service_name="bedrock-runtime",
+    region_name="us-east-1",
 )
 
 
@@ -56,7 +54,7 @@ def get_summary(
         prompt = f"""The following is a set of summaries:
         {text}
         Take these and combine it into a final, {mode} summary including all main themes. 
-        {mode.upper()} SUMMARY:"""
+        """
 
         summary = send_request_with_retry(config.verbose, prompt)
 
@@ -69,7 +67,7 @@ def get_summary(
 
         prompt = f"""Including all main themes, write a {mode} summary of the following:
         {text}
-        {mode.upper()} SUMMARY:"""
+        """
 
         summary = send_request_with_retry(config.verbose, prompt)
 
@@ -101,7 +99,7 @@ def split_and_summarise(config: object, text: str, chunk_size: int) -> str:
         for index, chunk in enumerate(chunks):
             prompt = f"""Write a concise summary of the following, including all main themes:
             "{chunk}"
-            CONCISE SUMMARY:"""
+            """
 
             # Send chunk for summarisation
             summary = send_request_with_retry(config.verbose, prompt)
@@ -140,16 +138,14 @@ def send_request_with_retry(verbose: bool, prompt: str, retries: int = 4) -> str
 
     if verbose:
         click.secho(f"\nCurrent prompt is {len(prompt.split())} words")
-
+    prompt = "Human: " + prompt + "\n Assistant:"
     prompt_config = {
-        "inputText": prompt,
-        "textGenerationConfig": {
-            "maxTokenCount": 3000,
-            "stopSequences": [],
-            "temperature": 0.7,
-            "topP": 0.2,
-        },
+        "prompt": prompt,
+        "max_tokens_to_sample": 4000,
+        "temperature": 0.7,
+        "top_k": 250,
     }
+
     body = json.dumps(prompt_config)
     initial_wait_time = 2
     for _ in range(retries):
@@ -160,10 +156,10 @@ def send_request_with_retry(verbose: bool, prompt: str, retries: int = 4) -> str
                 accept="application/json",
                 contentType="application/json",
             )
-            response_body = json.loads(response.get("body").read())
 
-            results = response_body.get("results")[0].get("outputText")
-            return results
+            response_body = json.loads(response.get("body").read())
+            return response_body["completion"].strip()
+
         except botocore.exceptions.ClientError as error:
             if error.response["Error"]["Code"] == "ThrottlingException":
                 click.secho("\nExperiencing some throttling. Hold on...", fg="red")
