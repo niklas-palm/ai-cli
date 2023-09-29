@@ -5,16 +5,11 @@ import boto3
 import botocore
 import click
 import nltk
+import time
 
 # What model of Amazon Bedrock to use
 MODEL_ID = "amazon.titan-tg1-large"
-# MODEL_ID = "amazon.titan-tg1-xlarge"
 
-# How large should each chunk of words be, in case the input text needs to be summarised "map-reduced"-style
-CHUNK_WORD_SIZES = 4000
-
-# Maximum number of words to send to Berock for inference
-MAX_TEXT_SIZE = 6000
 
 bedrock = boto3.client(
     service_name="bedrock",
@@ -23,13 +18,17 @@ bedrock = boto3.client(
 )
 
 
-def get_summary(config: object, text: str, mode: str) -> str:
+def get_summary(
+    config: object, text: str, mode: str = "detailed", max_chunk_size: int = 4000
+) -> str:
     """Summarises the input using Amazon Bedrock.
 
     Parameters:
         config (object): Config object
         text (str): Text content to summarise.
         mode (str): Summary mode. detailed | concise
+        max_chunk_size (int): Maximum chunk size to send for inference
+
 
     Returns:
         summary (str): Summary of the input text content.
@@ -42,10 +41,12 @@ def get_summary(config: object, text: str, mode: str) -> str:
 
     click.secho(f"Text is {len(text.split())} words", fg="magenta")
 
+    start = time.perf_counter()
+
     # If text needs to be split, and then "map-reduce" the summaries
-    if len(text.split()) > MAX_TEXT_SIZE:
-        while len(text.split()) > MAX_TEXT_SIZE:
-            text = split_and_summarise(config, text)
+    if len(text.split()) > max_chunk_size:
+        while len(text.split()) > max_chunk_size:
+            text = split_and_summarise(config, text, max_chunk_size)
 
         click.secho(
             f"All chunks summarised, now creating summary of summaries...",
@@ -57,7 +58,7 @@ def get_summary(config: object, text: str, mode: str) -> str:
         Take these and combine it into a final, {mode} summary including all main themes. 
         {mode.upper()} SUMMARY:"""
 
-        summary = send_request_with_retry(prompt)
+        summary = send_request_with_retry(config.verbose, prompt)
 
     # Incoming data doesn't need splitting, and can be summarised straight away.
     else:
@@ -70,24 +71,27 @@ def get_summary(config: object, text: str, mode: str) -> str:
         {text}
         {mode.upper()} SUMMARY:"""
 
-        summary = send_request_with_retry(prompt)
+        summary = send_request_with_retry(config.verbose, prompt)
 
+    time_spent = time.perf_counter() - start
+    click.secho(f"Time spent summarising: {round(time_spent, 2)} seconds", fg="magenta")
     return summary.strip()
 
 
-def split_and_summarise(config: object, text: str) -> str:
+def split_and_summarise(config: object, text: str, chunk_size: int) -> str:
     """Splits input text into chunks, and summarises each chunk with bedrock
 
     Parameters:
         config (object): Config object
         text (str): Text content to split and summarise.
+        chunk_size (str): Max size of chunks.
 
     Returns:
         all_summaries (str): All summaries, aggregated into one string
     """
 
     # Split text in chunks
-    text_chunks = split_into_chunks(text, CHUNK_WORD_SIZES, 5)
+    text_chunks = split_into_chunks(text, chunk_size, 5)
     summary = ""
 
     click.secho(f"Creating {len(text_chunks)} individual summaries.", fg="magenta")
@@ -100,12 +104,12 @@ def split_and_summarise(config: object, text: str) -> str:
             CONCISE SUMMARY:"""
 
             # Send chunk for summarisation
-            summary = send_request_with_retry(prompt)
+            summary = send_request_with_retry(config.verbose, prompt)
             if config.verbose:
-                click.secho("\n=================", fg="white")
-                click.secho(f"CHUNK {index+1} summary:", fg="white")
+                click.secho("\n=================")
+                click.secho(f"CHUNK {index+1} summary:")
                 click.secho(summary, fg="green")
-                click.secho("=================", fg="white")
+                click.secho("=================")
             summaries.append(summary)
 
     all_summaries = " ".join(summaries)
@@ -118,7 +122,7 @@ def split_and_summarise(config: object, text: str) -> str:
     return all_summaries
 
 
-def send_request_with_retry(prompt: str, retries: int = 4) -> str:
+def send_request_with_retry(verbose: bool, prompt: str, retries: int = 4) -> str:
     """Invokes Bedrock with the provided prompt, with custom retry mechanism with exponential
     back off to overcome the very harsch, default, throttling limits of bedrock.
 
@@ -126,16 +130,21 @@ def send_request_with_retry(prompt: str, retries: int = 4) -> str:
     initial wait time)
 
     Parameters:
+        verbose (bool): Logs more if True
         prompt (str): Prompt to send to bedrock.
         retries (int): Number of times to retry.
 
     Returns:
         response (str): Reponse from Bedrock.
     """
+
+    if verbose:
+        click.secho(f"\nCurrent prompt is {len(prompt.split())} words")
+
     prompt_config = {
         "inputText": prompt,
         "textGenerationConfig": {
-            "maxTokenCount": 4096,
+            "maxTokenCount": 3000,
             "stopSequences": [],
             "temperature": 0.7,
             "topP": 0.2,
@@ -158,9 +167,30 @@ def send_request_with_retry(prompt: str, retries: int = 4) -> str:
         except botocore.exceptions.ClientError as error:
             if error.response["Error"]["Code"] == "ThrottlingException":
                 click.secho("\nExperiencing some throttling. Hold on...", fg="red")
+            if (
+                error.response["Error"]["Code"] == "ValidationException"
+                and "Too many input tokens" in error.response["Error"]["Message"]
+            ):
+                click.secho(error, fg="red")
+                click.secho(
+                    "\nThis particular batch contained too many tokens. Sometime the number of token per word is > 3, but I don't know why or when.",
+                    fg="cyan",
+                )
+                click.secho("Skipping this chunk of the summary to keep it simple.")
+                return ""
+
             else:
                 click.secho(error, fg="red")
-                raise error
+                if verbose:
+                    # THIS PATH SHOULD PROBABLY BE SOMETHING MORE CONISTENT
+                    error_prompt_path = "error_prompt.txt"
+                    with open(error_prompt_path, "wt") as f:
+                        f.write(prompt)
+                    click.secho(
+                        f"You can find the prompt that created the error at {error_prompt_path}",
+                        fg="red",
+                        bold=True,
+                    )
 
         # If it's a throttling error, wait for a while before retrying
         time.sleep(initial_wait_time)
@@ -170,9 +200,7 @@ def send_request_with_retry(prompt: str, retries: int = 4) -> str:
     raise Exception("You're beeing throttled, dude.")
 
 
-def split_into_chunks(
-    text: str, max_word_count: int, num_sentence_overlap: int
-) -> list:
+def split_into_chunks(text: str, chunk_size: int, num_sentence_overlap: int) -> list:
     """Splits the text input into chunks of full sentences consisting of
     slightly more than max_word_count words, with an overlap of num_sentence_overlap sentences.
 
@@ -180,15 +208,15 @@ def split_into_chunks(
 
     Parameters:
         text (str): Text to split into chunks.
-        max_word_count (int): Number of words per chunk. (best effort)
+        chunk_size (int): Number of words per chunk. (best effort)
         num_sentence_overlap (int): Number of sentences to overlap each chunk.
 
     Returns:
         chunks (list): list of strings.
     """
 
-    if max_word_count < 40:
-        raise Exception("max_word_count must be larger than 50")
+    if chunk_size < 40:
+        raise Exception("chunk_size must be larger than 50")
 
     if num_sentence_overlap < 1:
         raise Exception("num_sentence_overlap must larger than 0")
@@ -217,7 +245,7 @@ def split_into_chunks(
         current_chunk.append(sentence)
         current_word_count += len(nltk.word_tokenize(sentence))
 
-        if current_word_count >= max_word_count:
+        if current_word_count >= chunk_size:
             chunks.append(" ".join(current_chunk))
 
             i -= num_sentence_overlap - 1
