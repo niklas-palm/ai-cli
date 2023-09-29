@@ -17,7 +17,7 @@ bedrock = boto3.client(
 
 
 def get_summary(
-    config: object, text: str, mode: str = "detailed", max_chunk_size: int = 4000
+    config: object, text: str, mode: str = "detailed", max_chunk_size: int = 20000
 ) -> str:
     """Summarises the input using Amazon Bedrock.
 
