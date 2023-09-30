@@ -26,7 +26,7 @@ def cli(config, verbose):
     type=str,
     default="detailed",
     show_default=True,
-    help="Summary mode can be: detailed | concise",
+    help="Summary mode can be any adjective: detailed | concise | joyful etc",
 )
 @pass_config
 def summarise(config, mode):
@@ -51,7 +51,7 @@ def summarise(config, mode):
 def fetch(input):
     """fetches the provided url or file and sends the text to stdout"""
     if is_local_filepath(input):
-        text = fetch_pdf(input)
+        text = get_local_file_text(input)
         click.echo(text)
         return
 
