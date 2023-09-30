@@ -36,3 +36,7 @@ ai fetch https://en.wikipedia.org/wiki/London_System | ai summarise -m joyful
 ```bash
 ai fetch local_file.pdf | ai summarise
 ```
+
+```bash
+ai fetch local_file.txt | ai summarise -m funny
+```
