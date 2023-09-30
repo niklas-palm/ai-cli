@@ -32,6 +32,59 @@ def is_url(input: str) -> bool:
     return bool(parsed_url.scheme and parsed_url.scheme.startswith("http"))
 
 
+def get_local_file_text(path: str) -> str:
+    """
+    Read the provided file and return the text.
+
+    Parameters:
+        path (str): The path of the local file.
+
+    Returns:
+        str: The extracted text.
+
+    Raises:
+        FileNotFoundError: If the file path does not exist.
+        ValueError: If the file type is not supported.
+    """
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"No file found at {path}")
+
+    file_extension = os.path.splitext(path)[1]
+
+    if file_extension.lower() == ".pdf":
+        return fetch_pdf(path)
+
+    if file_extension.lower() == ".txt":
+        return fetch_txt(path)
+
+    raise ValueError(f"File format '{file_extension}' is not supported")
+
+
+def fetch_txt(path: str) -> str:
+    """
+    Read the provided tcxt file and return the text.
+
+    Parameters:
+        path (str): The path of the txt file.
+
+    Returns:
+        str: The extracted text from the txt.
+
+    Raises:
+        ValueError: If the file is not a txt.
+    """
+
+    file_extension = os.path.splitext(path)[1]
+    if file_extension.lower() != ".txt":
+        raise ValueError("File is not a TXT")
+
+    with open(path, "r") as file:
+        text = file.read()
+
+    return text
+
+
 def fetch_pdf(path: str) -> str:
     """
     Read the provided PDF and return the text.
@@ -43,11 +96,8 @@ def fetch_pdf(path: str) -> str:
         str: The extracted text from the PDF.
 
     Raises:
-        FileNotFoundError: If the file path does not exist.
         ValueError: If the file is not a PDF.
     """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"No file found at {path}")
 
     file_extension = os.path.splitext(path)[1]
     if file_extension.lower() != ".pdf":
@@ -74,8 +124,8 @@ def fetch_url(url: str) -> str:
     response = requests.get(url)
     if response.status_code != 200:
         raise requests.exceptions.RequestException(
-            f"Request to {url} returned status code {response.status_code}")
+            f"Request to {url} returned status code {response.status_code}"
+        )
 
     soup = BeautifulSoup(response.text, "html.parser")
     return soup.get_text()
-
