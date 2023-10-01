@@ -4,7 +4,7 @@ Simple cli to summarise text with Bedrock. Contains some convenvience commands t
 
 ### Prerequisites
 
-- Access to Amazon Bedrock
+- Access to Amazon Bedrock in us-east-1
 - Valid AWS credentials in your environment
 
 ### Installation
