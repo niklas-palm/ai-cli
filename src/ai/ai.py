@@ -29,11 +29,15 @@ def cli(config, verbose):
     help="Summary mode can be any adjective: detailed | concise | joyful etc",
 )
 @pass_config
-def summarise(config, mode):
+def summarise(config, mode, input=""):
     """Reads data from stdin and summarises it"""
 
-    # Read data from stdin
-    text_to_summarise = click.get_text_stream("stdin").read()
+    if input:
+        text_to_summarise = input
+
+    else:
+        # Read data from stdin
+        text_to_summarise = click.get_text_stream("stdin").read()
 
     # Get summary of input
     summary = get_summary(config, text_to_summarise, mode)
@@ -48,17 +52,49 @@ def summarise(config, mode):
     type=str,
     required=True,
 )
-def fetch(input):
+@click.option(
+    "-s",
+    "--silent",
+    is_flag=True,
+    help="Does not echo the text to summarise to stdout",
+)
+def fetch(input, silent):
     """fetches the provided url or file and sends the text to stdout"""
     if is_local_filepath(input):
         text = get_local_file_text(input)
-        click.echo(text)
-        return
+        if not silent:
+            click.echo(text)
+        return text
 
     if is_url(input):
         text = fetch_url(input)
-        click.echo(text)
-        return
+        if not silent:
+            click.echo(text)
+        return text
 
     else:
         click.secho("The input you provided is not yet supported", fg="red")
+
+
+@cli.command()
+@click.argument(
+    "input",
+    type=str,
+    required=True,
+)
+@click.option(
+    "-m",
+    "--mode",
+    type=str,
+    default="detailed",
+    show_default=True,
+    help="Summary mode can be any adjective: detailed | concise | joyful etc",
+)
+@click.pass_context
+def fs(ctx, input, mode):
+    """Combines the fetch and summarise commands into one."""
+    # Invoke fetch command
+    text_to_summarise = ctx.invoke(fetch, input=input, silent=True)
+
+    # Invoke summarise command
+    ctx.invoke(summarise, input=text_to_summarise, mode=mode)
