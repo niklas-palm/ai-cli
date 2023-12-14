@@ -1,10 +1,13 @@
 ## ai cli
 
-Simple cli to summarise text with Bedrock. Contains some convenvience commands to read data online and PDFs
+Simple cli to summarise text with Bedrock. Contains some convenvience commands to read data online and from PDFs.
+Also has audio transcription capabilities using [Whisper](https://github.com/openai/whisper). 
 
 ### Prerequisites
 
-- Access to Amazon Bedrock (Claude Instant in us-east-1)
+- Python >=3.8,<3.12
+- [ffmpeg](#ffmpeg)
+- Access to Amazon Bedrock
 - Valid AWS credentials in your environment
 
 ### Installation
@@ -52,3 +55,29 @@ ai fs https://github.com/niklas-palm/ai-cli
 ```bash
 ai fs local_file.txt -m funny
 ```
+## Transcribe
+
+```bash
+ai transcribe local_file.mp3 
+```
+
+```bash
+ai transcribe --whispermodel base.en local_file.mp3 | ai summarise
+```
+
+## ffmpeg installation
+
+#### on Ubuntu or Debian
+`sudo apt update && sudo apt install ffmpeg`
+
+#### on Arch Linux
+`sudo pacman -S ffmpeg`
+
+#### on MacOS using [Homebrew](https://brew.sh/)
+`brew install ffmpeg`
+
+#### on Windows using [Chocolatey](https://chocolatey.org/)
+`choco install ffmpeg`
+
+#### on Windows using [Scoop](https://scoop.sh/)
+`scoop install ffmpeg`

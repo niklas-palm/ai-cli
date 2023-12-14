@@ -1,5 +1,7 @@
-import click
+import warnings
 
+import click
+import whisper
 from ai.bedrock.bedrock import get_summary
 from ai.utils.helpers import *
 
@@ -98,3 +100,40 @@ def fs(ctx, input, mode):
 
     # Invoke summarise command
     ctx.invoke(summarise, input=text_to_summarise, mode=mode)
+
+
+@cli.command()
+@click.argument(
+    "filepath",
+    type=str,
+    required=True,
+)
+@click.option(
+    "-wm",
+    "--whispermodel",
+    type=str,
+    default="tiny.en",
+    show_default=True,
+    help="Whisper model to use.",
+)
+def transcribe(filepath, whispermodel):
+    """Parses the provided audio file (wav or mp3) and sends the text to stdout. Note: This is a
+    slow process. Supported models can be found at:\n
+    https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages"""
+    if not os.path.exists(filepath):
+        click.echo("File not found")
+        return
+
+    if not (filepath.endswith('.wav') or filepath.endswith('.mp3')):
+        click.echo("File must be a wav or mp3 audio file")
+        return
+
+    warnings.filterwarnings("ignore")
+    model = whisper.load_model(whispermodel)
+    result = model.transcribe(filepath)
+    warnings.resetwarnings()
+
+    transcription = result["text"]
+    click.echo(transcription)
+    return
+
