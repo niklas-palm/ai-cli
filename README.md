@@ -41,10 +41,31 @@ ai fetch local_file.pdf | ai summarise
 ```
 
 ```bash
-ai transcribe local_file.mp3 | ai summarise
+ai fetch local_file.txt | ai summarise -m funny
 ```
 
-## ffmpeg
+## Short-hand
+
+`fs` combines the `fetch` and `summarise` commands.
+
+```bash
+ai fs https://github.com/niklas-palm/ai-cli
+```
+
+```bash
+ai fs local_file.txt -m funny
+```
+## Transcribe
+
+```bash
+ai transcribe local_file.mp3 
+```
+
+```bash
+ai transcribe --whispermodel base.en local_file.mp3 | ai summarise
+```
+
+## ffmpeg installation
 
 #### on Ubuntu or Debian
 `sudo apt update && sudo apt install ffmpeg`
