@@ -119,15 +119,13 @@ def fs(ctx, input, mode):
 def transcribe(filepath, whispermodel):
     """Parses the provided audio file (wav or mp3) and sends the text to stdout. Note: This is a
     slow process. Supported models can be found at:\n
-    https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages"""
+    https://github.com/openai/whisper?tab=readme-ov-file#available-models-and-languages
+    """
     if not os.path.exists(filepath):
         click.echo("File not found")
         return
 
-    if not (filepath.endswith('.wav') or filepath.endswith('.mp3')):
-        click.echo("File must be a wav or mp3 audio file")
-        return
-
+    click.echo("Transcribing...")
     warnings.filterwarnings("ignore")
     model = whisper.load_model(whispermodel)
     result = model.transcribe(filepath)
@@ -136,4 +134,3 @@ def transcribe(filepath, whispermodel):
     transcription = result["text"]
     click.echo(transcription)
     return
-
